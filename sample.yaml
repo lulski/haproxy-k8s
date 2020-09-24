@@ -1,0 +1,60 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    run: echo
+  name: echo
+  namespace: kocu-haproxy-controller
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      run: echo
+  template:
+    metadata:
+      labels:
+        run: echo
+    spec:
+      containers:
+        - name: echo
+          image: jmalloc/echo-server
+          ports:
+            - containerPort: 8080
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            successThreshold: 1
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: echo-service
+  namespace: kocu-haproxy-controller
+spec:
+  selector:
+    run: echo
+  ports:
+    - name: http
+      protocol: TCP
+      port: 80
+      targetPort: 80
+---
+apiVersion: networking.k8s.io/v1beta1
+kind: Ingress
+metadata:
+  name: echo-ingress
+  namespace: kocu-haproxy-controller
+  annotations:
+    haproxy.org/path-rewrite: "/"
+spec:
+  rules:
+    - http:
+        paths:
+          - path: /echo
+            backend:
+              serviceName: echo-service
+              servicePort: 80
